@@ -1,55 +1,69 @@
-from socket import AF_INET, socket, SOCK_STREAM
-from threading import Thread
+# Michael Long, Gennadii Sytov -- CS494 -- Server Application -- Server Class
 
-def accept_incoming_connections():
-    """Sets up handling for incoming clients."""
-    while True:
-        client, client_address = SERVER.accept()
-        print("%s:%s has connected." % client_address)
-        client.send(bytes("Enter your username: ", "utf8"))
-        addresses[client] = client_address
-        Thread(target=handle_client, args=(client,)).start()
+# Imports / Constants
+import socket
+from _thread import *
+import threading
+BUFFER = 1024 # Defines the maximum byte size of input from a client
 
-def handle_client(client):  # Takes client socket as argument.
-    """Handles a single client connection."""
-    name = client.recv(BUFSIZ).decode("utf8")
-    welcome = 'Welcome %s! If you want to quit, type /quit to exit.' % name
-    client.send(bytes(welcome, "utf8"))
-    msg = "%s has joined the chat!" % name
-    broadcast(bytes(msg, "utf8"))
-    clients[client] = name
-    while True:
-        msg = client.recv(BUFSIZ)
-        if msg != bytes("/quit", "utf8"):
-            broadcast(msg, name+": ")
-        else:
-            client.close()
-            del clients[client]
-            broadcast(bytes("%s has left the chat." % name, "utf8"))
-            break
+class server_handler():
 
-def broadcast(msg, prefix=""):  # prefix is for name identification.
-    """Broadcasts a message to all the clients."""
-    for sock in clients:
-        sock.send(bytes(prefix, "utf8")+msg)
+    def __init__(self, host, port):
+        # Basic Socket Variables
+        self.host = host
+        self.port = port
+        self.address = (host, port)
+        # Attempt to Bind to Socket
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind(self.address)
+        # Data Side
+        self.users = {}
+        print("Server has initialized (server_handler is ok)")
+
+    def connect(self, connection):
+        connection.send(bytes("Hello, please enter a username: ", "utf8"))
+        try:
+            username = connection.recv(BUFFER).decode("utf8")
+            connection.send(bytes("Welcome " + username + " type /? for a list of commands", "utf8"))
+            try:
+                self.users[connection, username] = connection
+                while True:
+
+                    print(username + " is giving data")
+
+                    data = connection.recv(BUFFER)
+
+                    # Check for commands
+                    if data == bytes("/?", "utf8"):
+                        connection.send(bytes('Commands:\n/join to join a chat room\n/leave to leave a chat room\n/quit to exit',"utf8"))
+                    elif data == bytes("/join", "utf8"):
+                        print(username + " is going to join a room")
+                        # insert join code here
+                    elif data == bytes("/leave", "utf8"):
+                        print(username + " is going to leave a room")
+                        # insert leave code here
+                    elif data == bytes("/quit", "utf8"):
+                        break
+                    else:
+                        # Echo to verify functionality
+                        print(data)
+                        connection.send(data)
 
 
 
-clients = {}
-addresses = {}
+                connection.send(bytes("You have been disconnected from the server.", "utf8"))
+                del self.users[connection, username]
+                connection.close
+            except:
+                print(username + " has disconnected")
+        except:
+            print("A user has disconnected")
 
-HOST = "127.0.0.1"
-PORT = 1234
-BUFSIZ = 1024
-ADDR = (HOST, PORT)
-
-SERVER = socket(AF_INET, SOCK_STREAM)
-SERVER.bind(ADDR)
-
-if __name__ == "__main__":
-    SERVER.listen(5)
-    print("Waiting for connection...")
-    ACCEPT_THREAD = Thread(target=accept_incoming_connections)
-    ACCEPT_THREAD.start()
-    ACCEPT_THREAD.join()
-SERVER.close()
+    def main_loop(self):
+        print("The server is listening for a new connection (main_loop has a listener)")
+        self.server.listen(5)
+        while True:
+            print("A connection has been found (main_loop will create a new thread)")
+            connection, address = self.server.accept()
+            start_new_thread(self.connect, (connection,))
+        self.server.close()
