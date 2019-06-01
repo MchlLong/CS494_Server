@@ -72,69 +72,84 @@ class server_handler():
                     print(username + " is giving data")
 
                     data = connection.recv(BUFFER)
-
+                    scrub_data = data.decode("utf8")
+                    print("Decoded Message")
+                    # Check for '/' to parse 
+                    if scrub_data[0] == '/':
                     # Check for commands
+                        
+                        # Translate to determine command
+                        text = scrub_data.split()
+                        for to_print in text:
+                            print(to_print)
+                        # List set of commands 
+                        if text[0] == "/?":
+                            connection.send(bytes('Commands:\n/create to make a chat room\n/join to join a chat room\n/leave to leave a chat room\n/users to print each user',"utf8"))
+                            connection.send(bytes('/list to show each room\n/disconnect to exit',"utf8"))
 
-                    # List set of commands 
-                    if data == bytes("/?", "utf8"):
-                        connection.send(bytes('Commands:\n/create to make a chat room\n/join to join a chat room\n/leave to leave a chat room\n/users to print each user',"utf8"))
-                        connection.send(bytes('/list to show each room\n/disconnect to exit',"utf8"))
+                        # Add a user to a room
+                        elif text[0] == "/join" and len(text) > 1:
+                            print(username + " is going to join a room")
+                            flag = False
+                            room = text[1] 
 
-                    # Add a user to a room
-                    elif data == bytes("/join", "utf8"):
-                        print(username + " is going to join a room")
-                        flag = False
-                        room = 'Room_A' #parse text for room_id
+                            # Verify that the room exists
+                            for check in self.room_list():
+                                if check == room:
+                                    flag = True
 
-                        # Verify that the room exists
-                        for check in self.room_list():
-                            if check == room:
-                                flag = True
-
-                        # If room exists, add the connection to the room
-                        if flag == True:
-                            self.rooms[room].append(connection)
-                            for key, val in self.rooms.items():
-                                print(key)
-                            
+                            # If room exists, add the connection to the room
+                            if flag == True:
+                                self.rooms[room].append(connection)
+                                for key, val in self.rooms.items():
+                                    print(key)
+                            else:
+                                connection.send(bytes("Error -- room does not exist", "utf8"))
                         
                         
 
-                    # Remove a user from a room
-                    elif data == bytes("/leave", "utf8"):
-                        print(username + " is going to leave a room")
-                        # insert leave code here
+                        # Remove a user from a room
+                        elif data == bytes("/leave", "utf8"):
+                            print(username + " is going to leave a room")
+                            # insert leave code here
 
-                    # Send a list of usernames
-                    elif data == bytes("/users", "utf8"):
-                        for to_print in self.users.keys():
-                            connection.send(bytes(to_print, "utf8"))
+                        # Send a list of usernames
+                        elif data == bytes("/users", "utf8"):
+                            for to_print in self.users.keys():
+                                connection.send(bytes(to_print, "utf8"))
 
-                    # Send a list of all rooms to the user
-                    elif data == bytes("/list", "utf8"):
-                        for to_send in self.room_list:
-                            connection.send(bytes(to_send, "utf8"))
+                        # Send a list of all rooms to the user
+                        elif data == bytes("/list", "utf8"):
+                            for to_send in self.room_list:
+                                connection.send(bytes(to_send, "utf8"))
 
                     
-                    # Disconnect a user from a room
-                    elif data == bytes("/disconnect", "utf8"):
-                        print(username + " has disconnected")
-                        del self.users[username]
-                        connected = False
-                        connection.send(bytes("You have been disconnected from the server.", "utf8"))               
-                        connection.close
-                        return
+                        # Disconnect a user from a room
+                        elif data == bytes("/disconnect", "utf8"):
+                            print(username + " has disconnected")
+                            del self.users[username]
+                            connected = False
+                            connection.send(bytes("You have been disconnected from the server.", "utf8"))   
+                            self.user_count += 1
+                            connection.close
+                            return
 
-                    # Send a message to each user sharing a room with user
+                        # Send a message to each user sharing a room with user
+                        else:
+                            # Echo to verify functionality
+                            print(data)
+                            connection.send(bytes("Invalid Command", "utf8"))
+
+                    # Send a normal message
                     else:
-                        # Echo to verify functionality
-                        print(data)
-                        connection.send(data)
-
+                        print("Echoing")
+                        connection.send(bytes(scrub_data, "utf8"))
+                        
             # Client disconnects with a specified username
             except:
                 print(username + " has disconnected")
                 del self.users[username]
+                self.user_count -= 1
                 connection.close()
 
         # Client disconnects without specifying a username
