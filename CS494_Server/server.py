@@ -17,8 +17,8 @@ class server_handler():
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.address)
         # Data Side
-        self.users = {}
-        self.rooms = {} # Usage rooms{Room_Name:user_list}
+        self.users = {} # Key is a user name, value is an address
+        self.rooms = {} # Key is a room name, value is a list of users in the room
         self.rooms['General'] = []
         self.user_count = 0
         print("Server has initialized (server_handler is ok)")
@@ -32,29 +32,30 @@ class server_handler():
             connection.send(bytes("Hello, please enter a username: ", "utf8"))
             username = connection.recv(BUFFER).decode("utf8")
 
+            # Check for null information sent in the connection buffer
+            if username == '':
+                print("Detected null user")
+                return
+
             # First user, no possibility of duplicates
             if (self.user_count == 0):
                 self.user_count += 1
             else:
-                # test for duplicate usernames
+                # Test for duplicate usernames
                 flag_entered = False
                 flag_repeat = False
                 for check in self.users.keys():
                     if check == username:
                         flag_repeat = True
-                if flag_repeat == False:
-                    pass
-                else:
-                    while flag_repeat:
-                        connection.send(bytes("Username is taken, please enter a valid username: ", "utf8"))
-                        username = connection.recv(BUFFER).decode("utf8")
-                        flag_repeat = False
-                        for check in self.users.keys():
-                            if check == username:
-                                flag_repeat = True
 
-
-
+                # Duplicate username detected, keep checking until a unique username is given
+                while flag_repeat:
+                    connection.send(bytes("Username is taken, please enter a valid username: ", "utf8"))
+                    username = connection.recv(BUFFER).decode("utf8")
+                    flag_repeat = False
+                    for check in self.users.keys():
+                        if check == username:
+                            flag_repeat = True
 
             # Once a username has been established, welcome and print a series of commands
             connection.send(bytes("Welcome " + username + " type /? for a list of commands", "utf8"))
@@ -69,7 +70,7 @@ class server_handler():
                 while connected:
 
                     print(username + " is giving data")
-
+                    # Receive a message from a user
                     data = connection.recv(BUFFER)
                     scrub_data = data.decode("utf8")
                     print("Decoded Message")
@@ -183,6 +184,10 @@ class server_handler():
                             connected = False
                             connection.send(bytes("You have been disconnected from the server.", "utf8"))   
                             self.user_count += 1
+                            for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                                for user_check in room_check: # Check each userlist
+                                    if user_check == username: # If username is in the list of users
+                                        room_check.remove(user_check)
                             connection.close
                             return
 
@@ -195,6 +200,7 @@ class server_handler():
                     # Send a normal message
                     else:
                         print("Echoing")
+
                         for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
                             for user_check in room_check: # Check each userlist
                                 if user_check == username: # If username is in the list of users
@@ -216,6 +222,11 @@ class server_handler():
             except:
                 print(username + " has disconnected")
                 del self.users[username]
+                for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                    for user_check in room_check: # Check each userlist
+                        if user_check == username: # If username is in the list of users
+                            room_check.remove(user_check)
+
                 self.user_count -= 1
                 connection.close()
 
