@@ -180,14 +180,15 @@ class server_handler():
                         # Disconnect a user from a room
                         elif text[0] == "/disconnect":
                             print(username + " has disconnected")
-                            del self.users[username]
-                            connected = False
                             connection.send(bytes("You have been disconnected from the server.", "utf8"))   
-                            self.user_count += 1
+                            self.user_count -= 1
+                            # Delete all instances of the user in each room
                             for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
                                 for user_check in room_check: # Check each userlist
                                     if user_check == username: # If username is in the list of users
                                         room_check.remove(user_check)
+                            del self.users[username]
+                            connected = False
                             connection.close
                             return
 
@@ -211,22 +212,17 @@ class server_handler():
                                         print(self.users[shared_users])
                                         self.users[shared_users].send(bytes("(" + room_name + ") " + username + ": " + scrub_data, "utf8"))
                                         
-                            # print(room_check)
-
-                        # for to_send in self.users.values():
-                            # print(to_send)
-                            # if to_send != connection:
-                                # to_send.send(bytes(username + ": " + scrub_data, "utf8"))
                         
             # Client disconnects with a specified username
             except:
                 print(username + " has disconnected")
-                del self.users[username]
+                # Delete all instances of the user in each room
                 for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
                     for user_check in room_check: # Check each userlist
                         if user_check == username: # If username is in the list of users
                             room_check.remove(user_check)
-
+                # Clean up connection
+                del self.users[username]
                 self.user_count -= 1
                 connection.close()
 
