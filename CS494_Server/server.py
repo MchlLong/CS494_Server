@@ -1,55 +1,246 @@
-from socket import AF_INET, socket, SOCK_STREAM
-from threading import Thread
+# Michael Long, Gennadii Sytov -- CS494 -- Server Application -- Server Class
 
-def accept_incoming_connections():
-    """Sets up handling for incoming clients."""
-    while True:
-        client, client_address = SERVER.accept()
-        print("%s:%s has connected." % client_address)
-        client.send(bytes("Enter your username: ", "utf8"))
-        addresses[client] = client_address
-        Thread(target=handle_client, args=(client,)).start()
+# Imports / Constants
+import socket
+from _thread import *
+import threading
+BUFFER = 1024 # Defines the maximum byte size of input from a client
 
-def handle_client(client):  # Takes client socket as argument.
-    """Handles a single client connection."""
-    name = client.recv(BUFSIZ).decode("utf8")
-    welcome = 'Welcome %s! If you want to quit, type /quit to exit.' % name
-    client.send(bytes(welcome, "utf8"))
-    msg = "%s has joined the chat!" % name
-    broadcast(bytes(msg, "utf8"))
-    clients[client] = name
-    while True:
-        msg = client.recv(BUFSIZ)
-        if msg != bytes("/quit", "utf8"):
-            broadcast(msg, name+": ")
-        else:
-            client.close()
-            del clients[client]
-            broadcast(bytes("%s has left the chat." % name, "utf8"))
-            break
+class server_handler():
 
-def broadcast(msg, prefix=""):  # prefix is for name identification.
-    """Broadcasts a message to all the clients."""
-    for sock in clients:
-        sock.send(bytes(prefix, "utf8")+msg)
+    def __init__(self, host, port):
+        # Basic Socket Variables
+        self.host = host
+        self.port = port
+        self.address = (host, port)
+        # Attempt to Bind to Socket
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.bind(self.address)
+        # Data Side
+        self.users = {} # Key is a user name, value is an address
+        self.rooms = {} # Key is a room name, value is a list of users in the room
+        self.rooms['General'] = []
+        self.user_count = 0
+        print("Server has initialized (server_handler is ok)")
 
+    def connect(self, connection):
 
+        connected = True
 
-clients = {}
-addresses = {}
+        try:
+            # Add user, get a username to place into data structure
+            connection.send(bytes("Hello, please enter a username: ", "utf8"))
+            username = connection.recv(BUFFER).decode("utf8")
 
-HOST = "127.0.0.1"
-PORT = 1234
-BUFSIZ = 1024
-ADDR = (HOST, PORT)
+            # Check for null information sent in the connection buffer
+            if username == '':
+                print("Detected null user")
+                return
 
-SERVER = socket(AF_INET, SOCK_STREAM)
-SERVER.bind(ADDR)
+            # First user, no possibility of duplicates
+            if (self.user_count == 0):
+                self.user_count += 1
+            else:
+                # Test for duplicate usernames
+                flag_entered = False
+                flag_repeat = False
+                for check in self.users.keys():
+                    if check == username:
+                        flag_repeat = True
 
-if __name__ == "__main__":
-    SERVER.listen(5)
-    print("Waiting for connection...")
-    ACCEPT_THREAD = Thread(target=accept_incoming_connections)
-    ACCEPT_THREAD.start()
-    ACCEPT_THREAD.join()
-SERVER.close()
+                # Duplicate username detected, keep checking until a unique username is given
+                while flag_repeat:
+                    connection.send(bytes("Username is taken, please enter a valid username: ", "utf8"))
+                    username = connection.recv(BUFFER).decode("utf8")
+                    flag_repeat = False
+                    for check in self.users.keys():
+                        if check == username:
+                            flag_repeat = True
+
+            # Once a username has been established, welcome and print a series of commands
+            connection.send(bytes("Welcome " + username + " type /? for a list of commands", "utf8"))
+            self.rooms['General'].append(username)
+            connection.send(bytes("You have joined the room!", "utf8"))
+            # Assign User Info
+            self.users[username] = connection
+            print(self.users[username])
+
+            try:
+
+                while connected:
+
+                    print(username + " is giving data")
+                    # Receive a message from a user
+                    data = connection.recv(BUFFER)
+                    scrub_data = data.decode("utf8")
+                    print("Decoded Message")
+                    # Check for '/' to parse 
+                    if scrub_data[0] == '/':
+                    # Check for commands
+                        
+                        # Translate to determine command
+                        text = scrub_data.split()
+                        for to_print in text:
+                            print(to_print)
+                        # List set of commands 
+                        if text[0] == "/?":
+                            connection.send(bytes('Commands:\n/create to make a chat room\n/join to join a chat room\n/leave to leave a chat room\n/users to print each user',"utf8"))
+                            connection.send(bytes('/list to show each room\n/disconnect to exit',"utf8"))
+
+                        # Add a user to a room
+                        elif text[0] == "/join" and len(text) > 1:
+                            print(username + " is going to join a room")
+                            flag = False
+                            flag_dup = True
+                            attempt_room = text[1] 
+                            print('Successfully assigned room')
+
+                            # Verify that the room exists
+                            for check in self.rooms.keys():
+                                print("Scanning room_list")
+                                if check == attempt_room:
+                                    flag = True
+
+                            # Verify the user is not in the room in the room
+                            if flag == True:
+                                for check in self.rooms[text[1]]:
+                                    print("Looking for duplicates: " + check)
+                                    if check == username:
+                                        flag_dup = False
+
+                            # If room exists, add the connection to the room
+                            if flag == True and flag_dup == True:
+                                print("Successfully added to room")
+                                self.rooms[attempt_room].append(username)
+                                connection.send(bytes("You have joined the room!", "utf8"))
+                            # Room exists, but the user is already in the room
+                            elif flag == True and flag_dup == False:
+                                connection.send(bytes("Error -- you're already in the room", "utf8"))
+                            # Room doesn't exist
+                            else: 
+                                connection.send(bytes("Error -- room does not exist", "utf8"))
+                        
+                        # Remove a user from a room
+                        elif text[0] == "/leave":
+                            print(username + " is going to leave a room")
+                            flag = False
+                            flag_inroom = False
+                            attempt_room = text[1] 
+                            # Verify that the room exists
+                            for check in self.rooms.keys():
+                                print("Scanning room_list")
+                                if check == attempt_room:
+                                    flag = True
+
+                            # Verify the user is in the room
+                            if flag == True:
+                                for check in self.rooms[text[1]]:
+                                    print("Looking for users in room")
+                                    if check == username:
+                                        flag_inroom = True
+
+                            # Room exists and the user is in the room, leave the room
+                            if flag == True and flag_inroom == True:
+                                print("Successfully left room")
+                                for check in self.rooms[text[1]]:
+                                    print(check)
+                                self.rooms[attempt_room].remove(username)
+                                connection.send(bytes("You have left the room!", "utf8"))
+                            # Room exists, user is not in the room, error
+                            elif flag == True and flag_inroom == False:
+                                connection.send(bytes("Error -- you can't leave a room you're not in", "utf8"))
+                            # Room doesn't exist, error
+                            else:
+                                connection.send(bytes("Error -- room does not exist", "utf8"))
+
+                        # Create a new room
+                        elif text[0] == "/create":
+                            print(username + " is going to create a room")
+                            flag = False
+                            flag_roomexists = False
+                            # Verify that the room doesn't exist
+                            for check in self.rooms.keys():
+                                print("Scanning room_list")
+                                if check == text[1]:
+                                    flag = True
+                            if flag == False:
+                                print("Created a new room")
+                                self.rooms[text[1]] = []
+
+                        # Send a list of usernames
+                        elif text[0] == "/users":
+                            for to_print in self.users.keys():
+                                connection.send(bytes(to_print, "utf8"))
+
+                        # Send a list of all rooms to the user
+                        elif text[0] == "/list":
+                            for to_send in self.rooms.keys():
+                                connection.send(bytes(to_send, "utf8"))
+
+                        # Disconnect a user from a room
+                        elif text[0] == "/disconnect":
+                            print(username + " has disconnected")
+                            del self.users[username]
+                            connected = False
+                            connection.send(bytes("You have been disconnected from the server.", "utf8"))   
+                            self.user_count += 1
+                            for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                                for user_check in room_check: # Check each userlist
+                                    if user_check == username: # If username is in the list of users
+                                        room_check.remove(user_check)
+                            connection.close
+                            return
+
+                        # No valid command was sent, error
+                        else:
+                            # Echo to verify functionality
+                            print(data)
+                            connection.send(bytes("Invalid Command", "utf8"))
+
+                    # Send a normal message
+                    else:
+                        print("Echoing")
+
+                        for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                            for user_check in room_check: # Check each userlist
+                                if user_check == username: # If username is in the list of users
+                                    print("User matching: " + user_check)
+                                    for shared_users in room_check:
+                                        print("Shared Users: " + shared_users)
+                                        print(self.users.keys())
+                                        print(self.users[shared_users])
+                                        self.users[shared_users].send(bytes("(" + room_name + ") " + username + ": " + scrub_data, "utf8"))
+                                        
+                            # print(room_check)
+
+                        # for to_send in self.users.values():
+                            # print(to_send)
+                            # if to_send != connection:
+                                # to_send.send(bytes(username + ": " + scrub_data, "utf8"))
+                        
+            # Client disconnects with a specified username
+            except:
+                print(username + " has disconnected")
+                del self.users[username]
+                for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                    for user_check in room_check: # Check each userlist
+                        if user_check == username: # If username is in the list of users
+                            room_check.remove(user_check)
+
+                self.user_count -= 1
+                connection.close()
+
+        # Client disconnects without specifying a username
+        except:
+            print("A user has disconnected")
+
+    # Main Loop to maintain a connection between a server and client
+    def main_loop(self):
+        online = True
+        print("The server is listening for a new connection (main_loop has a listener)")
+        self.server.listen(5)
+        while online:
+            connection, address = self.server.accept()
+            start_new_thread(self.connect, (connection,))
+            print("A connection has been found (main_loop will create a new thread)")
+        self.server.close()
