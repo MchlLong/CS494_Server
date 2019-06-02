@@ -195,7 +195,22 @@ class server_handler():
                     # Send a normal message
                     else:
                         print("Echoing")
-                        connection.send(bytes(scrub_data, "utf8"))
+                        for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
+                            for user_check in room_check: # Check each userlist
+                                if user_check == username: # If username is in the list of users
+                                    print("User matching: " + user_check)
+                                    for shared_users in room_check:
+                                        print("Shared Users: " + shared_users)
+                                        print(self.users.keys())
+                                        print(self.users[shared_users])
+                                        self.users[shared_users].send(bytes("(" + room_name + ") " + username + ": " + scrub_data, "utf8"))
+                                        
+                            # print(room_check)
+
+                        # for to_send in self.users.values():
+                            # print(to_send)
+                            # if to_send != connection:
+                                # to_send.send(bytes(username + ": " + scrub_data, "utf8"))
                         
             # Client disconnects with a specified username
             except:
