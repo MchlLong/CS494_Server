@@ -85,7 +85,7 @@ class server_handler():
                         # List set of commands 
                         if text[0] == "/?":
                             connection.send(bytes('Commands:\n/create to make a chat room\n/join to join a chat room\n/leave to leave a chat room\n/users to print each user',"utf8"))
-                            connection.send(bytes('/list to show each room\n/disconnect to exit',"utf8"))
+                            connection.send(bytes('/list to show each room\n/s RoomName message to send a message to a room\n/w username message to send a private message/disconnect to exit',"utf8"))
 
                         # Add a user to a room
                         elif text[0] == "/join" and len(text) > 1:
@@ -191,7 +191,27 @@ class server_handler():
                             connected = False
                             connection.close
                             return
+                        
+                        # Send a message to a room
+                        elif text[0] == '/s' and len(text) > 2:
+                            print(username + " is messaging a specific room")
+                            for room_name, room_check in self.rooms.items():
+                                if room_name == text[1]:
+                                    print(text[2::])
+                                    each_message = " "
+                                    each_message = each_message.join(text[2::])
+                                    for user_check in room_check:
+                                        self.users[user_check].send(bytes("(" + room_name + ") " + username + ": " + each_message, "utf8"))
 
+                        # Send a private message to a user
+                        elif text[0] == '/w' and len(text) > 2:
+                            print(username + " is messaging a specific user")
+                            for user_key, user_value in self.users.items():
+                                if text[1] == user_key:
+                                    each_message = " "
+                                    each_message = each_message.join(text[2::])
+                                    self.users[user_key].send(bytes("(Private To: " + user_key + ") " + username + ": " + each_message, "utf8"))
+                            
                         # No valid command was sent, error
                         else:
                             # Echo to verify functionality
