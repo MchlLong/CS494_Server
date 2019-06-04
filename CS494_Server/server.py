@@ -168,18 +168,26 @@ class server_handler():
                                 self.rooms[text[1]] = []
 
                         # Send a list of usernames
-                        elif text[0] == "/users":
+                        elif text[0] == "/users" and len(text) == 1:
                             for to_print in self.users.keys():
                                 connection.send(bytes(to_print, "utf8"))
 
-                        # Send a list of all rooms to the user
+                        # Send a list of usernames in a room
+                        elif text[0] == "/users" and len(text) == 2:
+                            for room_name, room_list in self.rooms.items():
+                                if room_name == text[1]:
+                                    for to_send in room_list:
+                                        connection.send(bytes(to_send, "utf8"))
+
+                        # List all rooms
                         elif text[0] == "/list":
                             for to_send in self.rooms.keys():
                                 connection.send(bytes(to_send, "utf8"))
-
+                        
+                        
                         # Disconnect a user from a room
                         elif text[0] == "/disconnect":
-                            print(username + " has disconnected")
+                            print("Command: " + username + " has disconnected")
                             connection.send(bytes("You have been disconnected from the server.", "utf8"))   
                             self.user_count -= 1
                             # Delete all instances of the user in each room
@@ -187,11 +195,16 @@ class server_handler():
                                 for user_check in room_check: # Check each userlist
                                     if user_check == username: # If username is in the list of users
                                         room_check.remove(user_check)
+                                        print("Successfully removed user from: " + room_name)
+
                             del self.users[username]
+                            print("Successfully deleted user")
                             connected = False
-                            connection.close
+                            connection.close()
+                            print("Successfully closed connection")
+                            # Close thread
                             return
-                        
+
                         # Send a message to a room
                         elif text[0] == '/s' and len(text) > 2:
                             print(username + " is messaging a specific room")
@@ -249,6 +262,11 @@ class server_handler():
         # Client disconnects without specifying a username
         except:
             print("A user has disconnected")
+            # Clean up connection
+            try:
+                del self.users[username]
+            except KeyError:
+                print("User doesn't exist")
 
     # Main Loop to maintain a connection between a server and client
     def main_loop(self):
