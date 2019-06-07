@@ -1,9 +1,12 @@
-# Michael Long, Gennadii Sytov -- CS494 -- Server Application -- Server Class
+# Server Implementation
+# Implementation of the server_handler 
+# Michael Long, Gennadii Sytov
+# CS494 Final Project, June 2019
 
 # Imports / Constants
 import socket
 import _thread
-import threading
+
 BUFFER = 1024 # Defines the maximum byte size of input from a client
 
 class server_handler():
@@ -32,7 +35,8 @@ class server_handler():
 
         try:
             # Add user, get a username to place into data structure
-            connection.send(bytes("Hello, please enter a username: ", "utf8"))
+            connection.send(bytes("Successfully connected to the Server", "utf8"))
+            connection.send(bytes("Please enter a unique username: ", "utf8"))
             username = connection.recv(BUFFER).decode("utf8")
 
             # Check for null information sent in the connection buffer
@@ -63,7 +67,7 @@ class server_handler():
             # Once a username has been established, welcome and print a series of commands
             connection.send(bytes("Welcome " + username + " type /? for a list of commands", "utf8"))
             self.rooms['General'].append(username)
-            connection.send(bytes("You have joined the room!", "utf8"))
+            connection.send(bytes("You have joined the room: General", "utf8"))
             # Assign User Info
             self.users[username] = connection
             print(self.users[username])
@@ -169,9 +173,12 @@ class server_handler():
                                 print("Scanning room_list")
                                 if check == text[1]:
                                     flag = True
+                                    connection.send(bytes("Error -- room already exists", "utf8"))
                             if flag == False:
                                 print("Created a new room")
                                 self.rooms[text[1]] = []
+                                connection.send(bytes("You successfully created a new room!", "utf8"))
+
 
                         # Send a list of usernames
                         elif text[0] == "/users" and len(text) == 1:
@@ -202,7 +209,7 @@ class server_handler():
                                     if user_check == username: # If username is in the list of users
                                         room_check.remove(user_check)
                                         print("Successfully removed user from: " + room_name)
-
+                            # Clean up data
                             del self.users[username]
                             print("Successfully deleted user")
                             connected = False
@@ -214,17 +221,20 @@ class server_handler():
                         # Send a message to a room
                         elif text[0] == '/s' and len(text) > 2:
                             print(username + " is messaging a specific room")
+                            # Verify the room exists, if the room exists join all non-command text
                             for room_name, room_check in self.rooms.items():
                                 if room_name == text[1]:
                                     print(text[2::])
                                     each_message = " "
                                     each_message = each_message.join(text[2::])
+                                    # For each user in matching room, send the message
                                     for user_check in room_check:
                                         self.users[user_check].send(bytes("(" + room_name + ") " + username + ": " + each_message, "utf8"))
 
                         # Send a private message to a user
                         elif text[0] == '/w' and len(text) > 2:
                             print(username + " is messaging a specific user")
+                            # Verify user exists, if user have been found join all non-command text and send the message
                             for user_key, user_value in self.users.items():
                                 if text[1] == user_key:
                                     each_message = " "
@@ -240,11 +250,14 @@ class server_handler():
                     # Send a normal message
                     else:
                         print("Echoing")
-
-                        for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
-                            for user_check in room_check: # Check each userlist
-                                if user_check == username: # If username is in the list of users
+                        # Check each room for it's userlist
+                        for room_name, room_check in self.rooms.items(): 
+                            # Check each userlist in each room
+                            for user_check in room_check: 
+                                # Check if username is in the list of users
+                                if user_check == username: 
                                     print("User matching: " + user_check)
+                                    # Send the message to all users who share a room with the sending user
                                     for shared_users in room_check:
                                         print("Shared Users: " + shared_users)
                                         print(self.users.keys())

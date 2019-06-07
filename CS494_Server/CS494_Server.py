@@ -1,4 +1,7 @@
-# Michael Long, Gennadii Sytov -- CS494 -- Server GUI Controller -- May 2019
+# Server Implementation
+# Implementation of the main server function
+# Michael Long, Gennadii Sytov
+# CS494 Final Project, June 2019
 
 import server
 
@@ -7,31 +10,23 @@ def main():
     print('Michael Long, Gennadii Sytov -- CS494: Server')
    
     # Distinguish whether to launch the server locally or online
-    print("Server Bootup: Please specify an ip (local: 127.0.0.1, Online: 192.168.0.102)")
+    t_host = '127.0.0.1'
+    t_port = 1234
     flag = True
-    t_host = input()
-    if t_host == '127.0.0.1' or t_host == '192.168.0.102':
-        flag = False
+    # Loop input until the Server successfully launches
     while flag:
-        print("Server Bootup: Please specify an ip (local: 127.0.0.1, Online: 192.168.0.102)")
-        t_host = input()
-        if t_host == '127.0.0.1' or t_host == '192.168.0.102':
+        try:
+            print("Please specify an IP to launch the server on (localhost is 127.0.0.1)")
+            t_host = input()
+            print("Please specify a Port to connect to (default is 1234)")
+            t_port = input()
+            t_port = int(t_port)
+            # Launch the server
+            server_app = server.server_handler(host = t_host, port = t_port)
             flag = False
-    
-    flag = True
-    print("Please specify a port number (local: 1234, Online: 1080)")
-    t_port = int(input())
-    if t_port == 1234 or t_port == 1080:
-        flag = False
-    while flag:
-        print("Please specify a port number (local: 1234, Online: 1080)")
-        t_port = input()
-        if t_port == 1234 or t_port == 1080:
-            flag = False
-
-    # Launch the server
-    server_app = server.server_handler(host = t_host, port = t_port)
-    server_app.main_loop()
+            server_app.main_loop()
+        except:
+            print("Error, either Server is launched with specified IP or invalid IP or Port value")
 
 if __name__ == '__main__':
     main()
