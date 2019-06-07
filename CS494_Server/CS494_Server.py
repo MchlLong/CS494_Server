@@ -1,6 +1,6 @@
 # Michael Long, Gennadii Sytov -- CS494 -- Server GUI Controller -- May 2019
 
-import server as s
+import server
 
 def main():
     
@@ -30,8 +30,8 @@ def main():
             flag = False
 
     # Launch the server
-    server = s.server_handler(host = t_host, port = t_port)
-    server.main_loop()
+    server_app = server.server_handler(host = t_host, port = t_port)
+    server_app.main_loop()
 
 if __name__ == '__main__':
     main()

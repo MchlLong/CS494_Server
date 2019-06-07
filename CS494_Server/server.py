@@ -2,25 +2,28 @@
 
 # Imports / Constants
 import socket
-from _thread import *
+import _thread
 import threading
 BUFFER = 1024 # Defines the maximum byte size of input from a client
 
 class server_handler():
 
     def __init__(self, host, port):
-        # Basic Socket Variables
+        # Basic socket setup
         self.host = host
         self.port = port
         self.address = (host, port)
-        # Attempt to Bind to Socket
+        # Attempt to bind to socket
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.address)
-        # Data Side
+        # Data
         self.users = {} # Key is a user name, value is an address
         self.rooms = {} # Key is a room name, value is a list of users in the room
         self.rooms['General'] = []
         self.user_count = 0
+        self.commands = ['/create ', '/join ', '/leave ', '/users', '/users ', '/list', '/s room_name ', '/w username ', '/disconnect']
+        self.commands_usage = ['room_name', 'room_name', 'room_name', '', 'room_name', '', 'room_name message', 'username message', '']
+        self.commands_desc = ['creates a new room', 'joins room_name', 'leaves room_name', 'list all users', 'list all users in room_name', 'list all rooms', 'send a message to all users in room_name', 'send a private message to a user', 'disconnect from the server']
         print("Server has initialized (server_handler is ok)")
 
     def connect(self, connection):
@@ -84,8 +87,11 @@ class server_handler():
                             print(to_print)
                         # List set of commands 
                         if text[0] == "/?":
-                            connection.send(bytes('Commands:\n/create to make a chat room\n/join to join a chat room\n/leave to leave a chat room\n/users to print each user',"utf8"))
-                            connection.send(bytes('/list to show each room\n/s RoomName message to send a message to a room\n/w username message to send a private message/disconnect to exit',"utf8"))
+                            for (print_command, print_usage, print_desc) in zip(self.commands, self.commands_usage, self.commands_desc):
+                                if print_command == self.commands[0] or print_command == self.commands[len(self.commands)-1]:
+                                    connection.send(bytes(print_command + print_usage + " -- " + print_desc, "utf8"))
+                                else:
+                                    connection.send(bytes(print_command + print_usage + " -- " + print_desc + '\n', "utf8"))
 
                         # Add a user to a room
                         elif text[0] == "/join" and len(text) > 1:
@@ -188,7 +194,7 @@ class server_handler():
                         # Disconnect a user from a room
                         elif text[0] == "/disconnect":
                             print("Command: " + username + " has disconnected")
-                            connection.send(bytes("You have been disconnected from the server.", "utf8"))   
+                            connection.send(bytes("--disconnect--", "utf8"))   
                             self.user_count -= 1
                             # Delete all instances of the user in each room
                             for room_name, room_check in self.rooms.items(): # Check each room for it's userlist
@@ -262,11 +268,6 @@ class server_handler():
         # Client disconnects without specifying a username
         except:
             print("A user has disconnected")
-            # Clean up connection
-            try:
-                del self.users[username]
-            except KeyError:
-                print("User doesn't exist")
 
     # Main Loop to maintain a connection between a server and client
     def main_loop(self):
@@ -275,6 +276,6 @@ class server_handler():
         self.server.listen(5)
         while online:
             connection, address = self.server.accept()
-            start_new_thread(self.connect, (connection,))
+            _thread.start_new_thread(self.connect, (connection,))
             print("A connection has been found (main_loop will create a new thread)")
         self.server.close()
