@@ -3,7 +3,7 @@
 # Michael Long, Gennadii Sytov
 # CS494 Final Project, June 2019
 
-import server
+import CS494_Server_Handler as server
 
 def main():
     
