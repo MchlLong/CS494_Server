@@ -26,7 +26,7 @@ class server_handler():
         self.rooms['General'] = [] # Server generates with a default room
         self.user_count = 0
         # commands, commands_usage, and commands_desc are lists to make adding new commands easier without modifying the '/?' command
-        self.commands = ['/create ', '/join ', '/leave ', '/users', '/users ', '/list', '/s room_name ', '/w username ', '/disconnect']
+        self.commands = ['/create ', '/join ', '/leave ', '/users', '/users ', '/list', '/s ', '/w ', '/disconnect']
         self.commands_usage = ['room_name', 'room_name . . . room_name', 'room_name', '', 'room_name', '', 'room_name . . . room_name message', 'username message', '']
         self.commands_desc = ['create new room', 'joins each room_name', 'leaves room_name', 'list all users', 'list all users in room_name', 'list all rooms', 'send message to each room_name', 'send message to user', 'disconnect from the server']
         print("Server is done initializing")
